@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useForm, useFieldArray } from 'react-hook-form';
@@ -34,6 +34,7 @@ export default function UploadRecipePage() {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
   const [imagePreview, setImagePreview] = useState(null);
+  const imageInputRef = useRef(null);
 
   const {
     register,
@@ -79,11 +80,34 @@ export default function UploadRecipePage() {
 
   const removeImage = () => {
     setImagePreview(null);
+    if (imageInputRef.current) imageInputRef.current.value = ''; // clear input
   };
 
   const onSubmit = async (formData) => {
     setSubmitting(true);
     try {
+      let imageUrl=null
+      const file=imageInputRef.current?.files?.[0]
+
+
+      if (file) {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('food_images')
+        .upload(fileName, file, { cacheControl: '3600', upsert: false });
+
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage
+        .from('food_images')
+        .getPublicUrl(fileName);
+
+      imageUrl = data.publicUrl;
+    }
+    console.log("public url for image is",imageUrl);
+    
       const recipeData = {
         title: formData.title,  
         description: formData.description,
@@ -92,6 +116,7 @@ export default function UploadRecipePage() {
         cook_time: formData.cookTime,
         servings: formData.servings,
         user_id: user.id,
+        image_url: imageUrl , // In a real app, you'd upload the image to storage and save the URL
         
       };
 
@@ -157,6 +182,14 @@ export default function UploadRecipePage() {
                     <ImageIcon className="h-4 w-4" /> Recipe Image
                   </Label>
                   <div className="flex flex-col items-center justify-center w-full">
+                    <input 
+                      id="image-upload"
+                      ref={imageInputRef} 
+                      type="file" 
+                      className="hidden" 
+                      accept="image/*" 
+                      onChange={handleImageChange} 
+                    />
                     {imagePreview ? (
                       <div className="relative w-full aspect-video rounded-xl overflow-hidden border shadow-inner">
                         <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
@@ -171,7 +204,10 @@ export default function UploadRecipePage() {
                         </Button>
                       </div>
                     ) : (
-                      <label className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-xl cursor-pointer bg-muted/50 hover:bg-muted transition-colors border-muted-foreground/20">
+                      <label 
+                        htmlFor="image-upload"
+                        className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-xl cursor-pointer bg-muted/50 hover:bg-muted transition-colors border-muted-foreground/20"
+                      >
                         <div className="flex flex-col items-center justify-center pt-5 pb-6">
                           <ImageIcon className="w-10 h-10 mb-3 text-muted-foreground" />
                           <p className="mb-2 text-sm text-muted-foreground">
@@ -179,7 +215,6 @@ export default function UploadRecipePage() {
                           </p>
                           <p className="text-xs text-muted-foreground">SVG, PNG, JPG or GIF (MAX. 800x400px)</p>
                         </div>
-                        <input type="file" className="hidden" accept="image/*" onChange={handleImageChange} />
                       </label>
                     )}
                   </div>
@@ -294,21 +329,25 @@ export default function UploadRecipePage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <Label className="flex items-center gap-2 text-xs font-semibold uppercase text-muted-foreground">
-                      <Clock className="h-4 w-4 text-primary" /> Cook Time
+                      <Clock className="h-4 w-4 text-primary" /> Cook Time (mins)
                     </Label>
                     <Input 
-                      {...register('cookTime')}
+                      type="number"
+                      {...register('cookTime', { valueAsNumber: true })}
                       className={errors.cookTime ? "border-red-500" : ""}
                     />
+                    {errors.cookTime && <p className="text-xs text-red-500">{errors.cookTime.message}</p>}
                   </div>
                   <div className="space-y-2">
                     <Label className="flex items-center gap-2 text-xs font-semibold uppercase text-muted-foreground">
                       <Users className="h-4 w-4 text-primary" /> Servings
                     </Label>
                     <Input 
-                      {...register('servings')}
+                      type="number"
+                      {...register('servings', { valueAsNumber: true })}
                       className={errors.servings ? "border-red-500" : ""}
                     />
+                    {errors.servings && <p className="text-xs text-red-500">{errors.servings.message}</p>}
                   </div>
                 </div>
               </div>
