@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { DotPattern } from '@/components/ui/dot-pattern'
 import { KineticText } from '@/components/ui/kinetic-text'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
@@ -21,48 +21,118 @@ import {
 import { motion, AnimatePresence } from 'framer-motion'
 import { useRouter } from 'next/navigation'
 import { Separator } from '@/components/ui/separator'
+import { useAuth } from '@/hooks/useAuth'
+import supabase from '@/config/client'
 
 const FavoritesPage = () => {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
+    const { user, loading: authLoading } = useAuth();
+      const [fetching, setFetching] = useState(true);
+      const [recipes, setRecipes] = useState([]);
+    
+    useEffect(() => {
+        if (!authLoading && !user) {
+          router.push("/auth");
+          return;
+        }
+    
+        if (user) {
+          fetchLikedRecipes(user);
+          
+        }
+      }, [user, authLoading, router]);
+
+      const fetchLikedRecipes = async (user) => {
+    setFetching(true);
+    try {
+      const { data, error } = await supabase
+      .from('favorites')
+      .select(`
+        recipe_id,
+        recipe:recipe_id (
+          id,
+          title,
+          description,
+          category,
+          image_url,
+          user_Name,
+          cook_time,
+          servings
+        )
+      `)
+      .eq('user_id', user.id); 
+
+      if (error) throw error;
+      const likedRecipes = data.map(fav => fav.recipe);
+    setRecipes(likedRecipes || []);
+    } catch (error) {
+      console.error("Error fetching recipes:", error);
+    } finally {
+      setFetching(false);
+    }
+  };
+
+  const handleRemoveFavorite = async (recipeId) => {
+    try {
+      const { error } = await supabase
+        .from('favorites')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('recipe_id', recipeId);
+
+      if (error) throw error;
+
+      // Update local state to remove the recipe
+      setRecipes(prevRecipes => prevRecipes.filter(r => r.id !== recipeId));
+    } catch (error) {
+      console.error("Error removing favorite:", error);
+    }
+  };
+  
+  const handleFavoriteChange = async (recipeId) => {
+    if (!user) return;
+  
+    const isAlreadyFavorited = favoriteIds.includes(recipeId);
+  
+    // Optimistic UI update: Toggle immediately on screen for smooth performance
+    if (isAlreadyFavorited) {
+      setFavoriteIds(prev => prev.filter(id => id !== recipeId));
+    } else {
+      setFavoriteIds(prev => [...prev, recipeId]);
+    }
+  
+    try {
+      if (isAlreadyFavorited) {
+        // Remove from database
+        const { error } = await supabase
+          .from('favorites')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('recipe_id', recipeId);
+          
+        if (error) throw error;
+      } else {
+        // Add to database
+        const { error } = await supabase
+          .from('favorites')
+          .insert([{ user_id: user.id, recipe_id: recipeId }]);
+          
+        if (error) throw error;
+      }
+    } catch (error) {
+      console.error("Failed to update favorite status:", error);
+      // Revert state change if the network request fails
+      fetchUserFavorites();
+    }
+  };
 
   // Mock favorites data for the skeleton/design
-  const mockFavorites = [
-    {
-      id: 1,
-      title: "Spicy Miso Ramen",
-      description: "A rich, creamy broth with perfectly chewy noodles and a kick of spice.",
-      category: "Dinner",
-      image_url: null,
-      cook_time: 45,
-      servings: 2,
-      user_Name: "Chef Haruto"
-    },
-    {
-      id: 2,
-      title: "Blueberry Lemon Pancakes",
-      description: "Fluffy pancakes bursting with fresh blueberries and a zingy lemon twist.",
-      category: "Breakfast",
-      image_url: null,
-      cook_time: 20,
-      servings: 4,
-      user_Name: "Sarah Baker"
-    },
-    {
-      id: 3,
-      title: "Mediterranean Quinoa Salad",
-      description: "A fresh and healthy salad packed with protein and vibrant vegetables.",
-      category: "Lunch",
-      image_url: null,
-      cook_time: 15,
-      servings: 3,
-      user_Name: "Elena Green"
-    }
-  ];
+  
 
-  const filteredFavorites = mockFavorites.filter(recipe => 
+  const filteredFavorites = recipes.filter(recipe => 
     recipe.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    recipe.category.toLowerCase().includes(searchQuery.toLowerCase())
+    recipe.description?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
@@ -163,7 +233,8 @@ const FavoritesPage = () => {
                            <Button 
                              size="icon" 
                              variant="secondary" 
-                             className="h-10 w-10 rounded-full bg-white/90 backdrop-blur shadow-sm hover:bg-white text-red-500 transition-colors"
+                             className="h-10 w-10  relative z-20 rounded-full bg-white/90 backdrop-blur shadow-sm hover:bg-white text-red-500 transition-colors"
+                             onClick={() => handleRemoveFavorite(recipe.id)}
                            >
                              <Heart className="h-5 w-5 fill-red-500" />
                            </Button>
@@ -208,15 +279,15 @@ const FavoritesPage = () => {
                       <CardFooter className="p-4 px-6 flex justify-between items-center bg-muted/10">
                         <div className="flex items-center gap-2">
                           <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-violet-500 to-primary flex items-center justify-center shadow-inner">
-                            <span className="text-[10px] font-black text-white">{recipe.user_Name[0]}</span>
+                            <span className="text-[10px] font-black text-white">{recipe.user_Name}</span>
                           </div>
                           <span className="text-[11px] font-bold text-muted-foreground">
                             {recipe.user_Name}
                           </span>
                         </div>
-                        <Button variant="ghost" size="icon" className="rounded-full h-8 w-8 hover:bg-primary/5">
+                        {/* <Button variant="ghost" size="icon" className="rounded-full h-8 w-8 hover:bg-primary/5">
                            <Bookmark className="h-4 w-4 text-muted-foreground" />
-                        </Button>
+                        </Button> */}
                       </CardFooter>
                     </Card>
                   </motion.div>

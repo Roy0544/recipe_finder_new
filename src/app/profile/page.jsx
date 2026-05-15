@@ -2,22 +2,48 @@
 
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Loader2, User, Mail, Calendar, Settings, Heart, Bookmark, Utensils, Plus } from "lucide-react";
 import { DotPattern } from "@/components/ui/dot-pattern";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-
+import supabase from "@/config/client"
 export default function ProfilePage() {
   const { user, loading } = useAuth();
   const router = useRouter();
-
+    const [fetching, setFetching] = useState(true);
+  const [recipes, setRecipes] = useState(null)
+  
+const [likedrecipes, setlikedRecipes] = useState(null)
   useEffect(() => {
     if (!loading && !user) {
       router.push("/auth");
+     
+    }
+    if(user){
+      fetchLikedRecipes(user);
+      fetchRecipes();
     }
   }, [user, loading, router]);
+
+  const fetchRecipes = async () => {
+    setFetching(true);
+    try {
+      const { data, error } = await supabase
+        .from('recipe')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setRecipes(data || []);
+    } catch (error) {
+      console.error("Error fetching recipes:", error);
+    } finally {
+      setFetching(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -28,6 +54,16 @@ export default function ProfilePage() {
   }
 
   if (!user) return null;
+  const fetchLikedRecipes=async(user)=>{
+  const {data,error}=await supabase.from('favorites').select('recipe_id').eq('user_id',user.id);
+  setlikedRecipes(data)
+  console.log("liked recipes is ",data);
+  
+  if(error){
+    console.error("Error fetching liked recipes:",error);
+    return;
+  }
+}
 
   const joinDate = user.created_at ? new Date(user.created_at).toLocaleDateString('en-US', {
     month: 'long',
@@ -60,14 +96,14 @@ export default function ProfilePage() {
                   <Calendar className="h-4 w-4" />
                   <span>Joined {joinDate}</span>
                 </div>
-                <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                {/* <div className="flex items-center gap-3 text-sm text-muted-foreground">
                   <Settings className="h-4 w-4" />
                   <span>Account Settings</span>
-                </div>
+                </div> */}
               </div>
-              <Button className="w-full mt-4 rounded-full" variant="outline">
+              {/* <Button className="w-full mt-4 rounded-full" variant="outline">
                 Edit Profile
-              </Button>
+              </Button> */}
               <Button className="w-full mt-2 rounded-full" onClick={() => router.push('/upload-recipe')}>
                 <Plus className="h-4 w-4 mr-2" /> Upload Recipe
               </Button>
@@ -85,17 +121,17 @@ export default function ProfilePage() {
                   <CardDescription className="flex items-center gap-2">
                     <Heart className="h-4 w-4 text-red-500" /> Favorites
                   </CardDescription>
-                  <CardTitle className="text-2xl">24</CardTitle>
+                  <CardTitle className="text-2xl">{likedrecipes?.length || 0}</CardTitle>
                 </CardHeader>
               </Card>
-              <Card className="bg-card/50 backdrop-blur">
+              {/* <Card className="bg-card/50 backdrop-blur">
                 <CardHeader className="pb-2">
                   <CardDescription className="flex items-center gap-2">
                     <Bookmark className="h-4 w-4 text-blue-500" /> Saved
                   </CardDescription>
                   <CardTitle className="text-2xl">12</CardTitle>
                 </CardHeader>
-              </Card>
+              </Card> */}
               <Card 
                 className="bg-card/50 backdrop-blur group cursor-pointer hover:border-primary/50 transition-colors" 
                 onClick={() => router.push('/upload-recipe')}
@@ -107,7 +143,7 @@ export default function ProfilePage() {
                     </CardDescription>
                     <Plus className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
                   </div>
-                  <CardTitle className="text-2xl">5</CardTitle>
+                  <CardTitle className="text-2xl">{recipes?.length || 0}</CardTitle>
                 </CardHeader>
               </Card>
             </div>
@@ -131,3 +167,4 @@ export default function ProfilePage() {
     </div>
   );
 }
+

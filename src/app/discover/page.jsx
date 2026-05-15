@@ -37,6 +37,7 @@ const DiscoverPage = () => {
   const [recipes, setRecipes] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState("All")
   const router = useRouter();
+const [favoriteIds, setFavoriteIds] = useState([]);
   
   const [fetching, setFetching] = useState(true);
 
@@ -48,8 +49,24 @@ const DiscoverPage = () => {
 
     if (user) {
       fetchRecipes();
+      fetchUserFavorites();
     }
   }, [user, authLoading, router]);
+
+  const fetchUserFavorites = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('favorites')
+      .select('recipe_id')
+      .eq('user_id', user.id);
+    
+    if (error) throw error;
+    // Store just the array of IDs: [1, 5, 12]
+    setFavoriteIds(data.map(fav => fav.recipe_id));
+  } catch (error) {
+    console.error("Error fetching favorites:", error);
+  }
+};
 
   const fetchRecipes = async () => {
     setFetching(true);
@@ -66,6 +83,42 @@ const DiscoverPage = () => {
       setFetching(false);
     }
   };
+  const handleFavoriteChange = async (recipeId) => {
+  if (!user) return;
+
+  const isAlreadyFavorited = favoriteIds.includes(recipeId);
+
+  // Optimistic UI update: Toggle immediately on screen for smooth performance
+  if (isAlreadyFavorited) {
+    setFavoriteIds(prev => prev.filter(id => id !== recipeId));
+  } else {
+    setFavoriteIds(prev => [...prev, recipeId]);
+  }
+
+  try {
+    if (isAlreadyFavorited) {
+      // Remove from database
+      const { error } = await supabase
+        .from('favorites')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('recipe_id', recipeId);
+        
+      if (error) throw error;
+    } else {
+      // Add to database
+      const { error } = await supabase
+        .from('favorites')
+        .insert([{ user_id: user.id, recipe_id: recipeId }]);
+        
+      if (error) throw error;
+    }
+  } catch (error) {
+    console.error("Failed to update favorite status:", error);
+    // Revert state change if the network request fails
+    fetchUserFavorites();
+  }
+};
 
   const filteredRecipes = recipes.filter(recipe => {
     const matchesSearch = 
@@ -199,19 +252,26 @@ const DiscoverPage = () => {
                       {/* Overlay Buttons */}
                       <div className="absolute top-3 right-3 flex flex-col gap-2">
                          <Button 
+                            onClick={()=>handleFavoriteChange(recipe.id)}
                            size="icon" 
                            variant="secondary" 
-                           className="h-9 w-9 rounded-full bg-white/90 backdrop-blur shadow-sm hover:bg-white text-muted-foreground hover:text-red-500 transition-colors"
+                           className="h-9 w-9 relative z-20   rounded-full bg-white/90 backdrop-blur shadow-sm hover:bg-white text-muted-foreground hover:text-red-500 transition-colors"
                          >
-                           <Heart className="h-4 w-4" />
+                          <Heart 
+       className={`h-4 w-4 transition-colors ${
+         favoriteIds.includes(recipe.id) 
+           ? "text-red-500 fill-red-500" 
+           : "text-muted-foreground"
+       }`}
+     />
                          </Button>
-                         <Button 
+                         {/* <Button 
                            size="icon" 
                            variant="secondary" 
                            className="h-9 w-9 rounded-full bg-white/90 backdrop-blur shadow-sm hover:bg-white text-muted-foreground hover:text-primary transition-colors"
                          >
                            <Bookmark className="h-4 w-4" />
-                         </Button>
+                         </Button> */}
                       </div>
 
                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
