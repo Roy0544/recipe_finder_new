@@ -8,18 +8,20 @@ import { DotPattern } from "@/components/ui/dot-pattern";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import supabase from "@/config/client"
+import Image from "next/image";
+
 export default function ProfilePage() {
   const { user, loading } = useAuth();
   const router = useRouter();
-    const [fetching, setFetching] = useState(true);
+  const [fetching, setFetching] = useState(true);
   const [recipes, setRecipes] = useState(null)
-  
-const [likedrecipes, setlikedRecipes] = useState(null)
+  const [likedrecipes, setlikedRecipes] = useState(null)
+
   useEffect(() => {
     if (!loading && !user) {
       router.push("/auth");
-     
     }
     if(user){
       fetchLikedRecipes(user);
@@ -45,6 +47,16 @@ const [likedrecipes, setlikedRecipes] = useState(null)
     }
   };
 
+  const fetchLikedRecipes = async (user) => {
+    const { data, error } = await supabase.from('favorites').select('recipe_id').eq('user_id', user.id);
+    setlikedRecipes(data)
+    
+    if(error){
+      console.error("Error fetching liked recipes:", error);
+      return;
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -54,21 +66,18 @@ const [likedrecipes, setlikedRecipes] = useState(null)
   }
 
   if (!user) return null;
-  const fetchLikedRecipes=async(user)=>{
-  const {data,error}=await supabase.from('favorites').select('recipe_id').eq('user_id',user.id);
-  setlikedRecipes(data)
-  console.log("liked recipes is ",data);
-  
-  if(error){
-    console.error("Error fetching liked recipes:",error);
-    return;
-  }
-}
+console.log(user);
 
   const joinDate = user.created_at ? new Date(user.created_at).toLocaleDateString('en-US', {
     month: 'long',
     year: 'numeric'
   }) : "Unknown";
+
+  // Safe way to get avatar URL from various providers (Google, GitHub, etc.)
+  const avatarUrl = user.user_metadata.avatar_url
+                    
+  console.log("Profile Debug - User Object:", user);
+  console.log("Profile Debug - Resolved Avatar URL:", avatarUrl);
 
   return (
     <div className="relative min-h-screen bg-background p-6 md:p-12 overflow-hidden">
@@ -79,8 +88,13 @@ const [likedrecipes, setlikedRecipes] = useState(null)
           {/* Sidebar / User Info Card */}
           <Card className="w-full md:w-80 shadow-lg border-primary/10">
             <CardHeader className="text-center pb-2">
-              <div className="mx-auto w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center mb-4 border-2 border-primary/20">
-                <User className="h-12 w-12 text-primary" />
+              <div className="mx-auto mb-4">
+                <Avatar className="h-24 w-24 border-2 border-primary/20 shadow-inner">
+                 <AvatarImage src={avatarUrl} alt={user.user_metadata?.full_name || user.email} />
+                  <AvatarFallback className="bg-primary/10 text-primary text-2xl font-bold">
+                    {user.user_metadata?.full_name?.[0] || user.email[0].toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
               </div>
               <CardTitle className="text-xl font-bold truncate">
                 {user.user_metadata?.full_name || user.email.split('@')[0]}
@@ -96,14 +110,7 @@ const [likedrecipes, setlikedRecipes] = useState(null)
                   <Calendar className="h-4 w-4" />
                   <span>Joined {joinDate}</span>
                 </div>
-                {/* <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                  <Settings className="h-4 w-4" />
-                  <span>Account Settings</span>
-                </div> */}
               </div>
-              {/* <Button className="w-full mt-4 rounded-full" variant="outline">
-                Edit Profile
-              </Button> */}
               <Button className="w-full mt-2 rounded-full" onClick={() => router.push('/upload-recipe')}>
                 <Plus className="h-4 w-4 mr-2" /> Upload Recipe
               </Button>
@@ -124,14 +131,6 @@ const [likedrecipes, setlikedRecipes] = useState(null)
                   <CardTitle className="text-2xl">{likedrecipes?.length || 0}</CardTitle>
                 </CardHeader>
               </Card>
-              {/* <Card className="bg-card/50 backdrop-blur">
-                <CardHeader className="pb-2">
-                  <CardDescription className="flex items-center gap-2">
-                    <Bookmark className="h-4 w-4 text-blue-500" /> Saved
-                  </CardDescription>
-                  <CardTitle className="text-2xl">12</CardTitle>
-                </CardHeader>
-              </Card> */}
               <Card 
                 className="bg-card/50 backdrop-blur group cursor-pointer hover:border-primary/50 transition-colors" 
                 onClick={() => router.push('/upload-recipe')}
@@ -167,4 +166,3 @@ const [likedrecipes, setlikedRecipes] = useState(null)
     </div>
   );
 }
-

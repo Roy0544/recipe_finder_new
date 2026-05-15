@@ -5,30 +5,42 @@ import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
 import { 
   Loader2, 
-  Heart, 
-  Bookmark, 
-  Clock, 
-  Users, 
-  Utensils, 
   ChevronRight,
-  MessageSquare
+  Utensils
 } from "lucide-react";
 import { KineticText } from '@/components/ui/kinetic-text';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
 import { motion, AnimatePresence } from "framer-motion";
 import supabase from '@/config/client';
+import RecipeCard from '@/components/recipe-card';
 
 const HomePage = () => {
   const { user, loading } = useAuth();
   const router = useRouter();
   const [recipes, setRecipes] = useState([]);
   const [fetching, setFetching] = useState(true);
+  const [userFavorites, setUserFavorites] = useState(new Set());
 
   useEffect(() => {
     fetchRecipes();
-  }, []);
+    if (user) {
+      fetchUserFavorites();
+    }
+  }, [user]);
+
+  const fetchUserFavorites = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('favorites')
+        .select('recipe_id')
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+      setUserFavorites(new Set(data.map(fav => fav.recipe_id)));
+    } catch (error) {
+      console.error("Error fetching user favorites:", error);
+    }
+  };
 
   const fetchRecipes = async () => {
     setFetching(true);
@@ -47,6 +59,43 @@ const HomePage = () => {
     }
   };
 
+  const handleFavoriteToggle = async (recipeId) => {
+    if (!user) {
+      router.push('/auth');
+      return;
+    }
+
+    const isCurrentlyFav = userFavorites.has(recipeId);
+    
+    try {
+      if (isCurrentlyFav) {
+        const { error } = await supabase
+          .from('favorites')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('recipe_id', recipeId);
+
+        if (error) throw error;
+        
+        const newFavs = new Set(userFavorites);
+        newFavs.delete(recipeId);
+        setUserFavorites(newFavs);
+      } else {
+        const { error } = await supabase
+          .from('favorites')
+          .insert([{ user_id: user.id, recipe_id: recipeId }]);
+
+        if (error) throw error;
+        
+        const newFavs = new Set(userFavorites);
+        newFavs.add(recipeId);
+        setUserFavorites(newFavs);
+      }
+    } catch (error) {
+      console.error("Error toggling favorite:", error);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-[80vh] flex items-center justify-center">
@@ -54,7 +103,6 @@ const HomePage = () => {
       </div>
     );
   }
-  console.log("user",user)
 
   return (
     <div className="relative min-h-screen bg-background overflow-x-hidden">
@@ -76,7 +124,7 @@ const HomePage = () => {
           <p className="text-xl text-muted-foreground max-w-[600px] mx-auto">
             {user ? (
               <>
-                You are logged in as <span className="font-semibold text-foreground">{user?.user_metadata.name}</span>. 
+                You are logged in as <span className="font-semibold text-foreground capitalize">{user?.user_metadata.name}</span>. 
                 Start exploring thousands of recipes or save your own!
               </>
             ) : (
@@ -112,103 +160,11 @@ const HomePage = () => {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.05 }}
                 >
-                  <Card className="group h-full overflow-hidden border-primary/5 hover:border-primary/20 transition-all duration-300 shadow-sm hover:shadow-xl bg-card/50 backdrop-blur-sm flex flex-col">
-                    {/* Image Container */}
-                    <div className="relative aspect-[4/3] overflow-hidden bg-muted">
-                      {recipe.image_url ? (
-                        <img 
-                          src={recipe.image_url} 
-                          alt={recipe.title}
-                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                          <Utensils className="h-12 w-12 opacity-20" />
-                        </div>
-                      )}
-                      
-                      {/* Category Badge */}
-                      {recipe.category && (
-                        <div className="absolute top-3 left-3">
-                          <span className="px-3 py-1 rounded-full bg-violet-600/90 backdrop-blur text-[10px] font-bold text-white shadow-lg">
-                            {recipe.category}
-                          </span>
-                        </div>
-                      )}
-                      
-                      {/* Overlay Buttons */}
-                      <div className="absolute top-3 right-3 flex flex-col gap-2">
-                         <Button 
-                           size="icon" 
-                           variant="secondary" 
-                           className="h-9 w-9 rounded-full bg-white/90 backdrop-blur shadow-sm hover:bg-white text-muted-foreground hover:text-red-500 transition-colors"
-                         >
-                           <Heart className="h-4 w-4" />
-                         </Button>
-                         <Button 
-                           size="icon" 
-                           variant="secondary" 
-                           className="h-9 w-9 rounded-full bg-white/90 backdrop-blur shadow-sm hover:bg-white text-muted-foreground hover:text-primary transition-colors"
-                         >
-                           <Bookmark className="h-4 w-4" />
-                         </Button>
-                      </div>
-
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
-                         <Button 
-                           variant="secondary" 
-                           size="sm" 
-                           className="rounded-full w-full bg-white/20 backdrop-blur text-white border-white/20 hover:bg-white/30"
-                           onClick={() => router.push(`/recipe/${recipe.id}`)}
-                         >
-                           View Details <ChevronRight className="h-4 w-4 ml-1" />
-                         </Button>
-                      </div>
-                    </div>
-
-                    <CardHeader className="p-5 pb-2">
-                      <CardTitle className="text-lg font-bold leading-tight group-hover:text-primary transition-colors line-clamp-1">
-                        {recipe.title}
-                      </CardTitle>
-                      <p className="text-sm text-muted-foreground line-clamp-2 mt-1 min-h-[40px]">
-                        {recipe.description}
-                      </p>
-                    </CardHeader>
-
-                    <CardContent className="p-5 pt-2 pb-4 flex-grow">
-                      <div className="flex items-center gap-3 text-xs font-medium text-muted-foreground">
-                        <div className="flex items-center gap-1.5 px-2 py-1 bg-primary/5 rounded-md">
-                          <Clock className="h-3.5 w-3.5 text-primary" />
-                          {recipe.cook_time || "N/A"}m
-                        </div>
-                        <div className="flex items-center gap-1.5 px-2 py-1 bg-blue-500/5 rounded-md">
-                          <Users className="h-3.5 w-3.5 text-blue-500" />
-                          {recipe.servings || "N/A"}
-                        </div>
-                      </div>
-                    </CardContent>
-                    
-                    <Separator className="bg-primary/5" />
-                    
-                    <CardFooter className="p-4 px-5 flex justify-between items-center bg-muted/20">
-                      <div className="flex items-center gap-2">
-                        <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center">
-                          <Users className="h-3 w-3 text-primary" />
-                        </div>
-                        <span className="text-[10px] font-bold text-muted-foreground/80">
-                          {recipe.user_Name || "Unknown Chef"}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-3 text-muted-foreground">
-                        <div className="flex items-center gap-1 text-[10px] font-bold">
-                          <Heart className="h-3 w-3" /> 0
-                        </div>
-                        <div className="flex items-center gap-1 text-[10px] font-bold">
-                          <MessageSquare className="h-3 w-3" /> 0
-                        </div>
-                      </div>
-                    </CardFooter>
-                  </Card>
+                  <RecipeCard 
+                    recipe={recipe} 
+                    isFavorite={userFavorites.has(recipe.id)}
+                    onFavoriteToggle={handleFavoriteToggle}
+                  />
                 </motion.div>
               ))}
             </AnimatePresence>

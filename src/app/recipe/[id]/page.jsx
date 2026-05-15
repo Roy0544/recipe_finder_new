@@ -24,6 +24,7 @@ import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { motion } from 'framer-motion';
 import supabase from '@/config/client';
+import CommentSection from '@/components/comment-section';
 
 export default function RecipeDetailPage() {
   const { id } = useParams();
@@ -233,66 +234,7 @@ export default function RecipeDetailPage() {
         <Separator className="bg-primary/10" />
 
         {/* Comment Section */}
-        <div className="max-w-3xl mx-auto space-y-10 pt-10 pb-20">
-          <div className="space-y-4 text-center">
-            <h2 className="text-3xl font-black tracking-tight">Community Discussion</h2>
-            <p className="text-muted-foreground">Share your thoughts or ask the chef a question!</p>
-          </div>
-
-          <div className="space-y-6">
-            {/* New Comment Input */}
-            <div className="relative group">
-              <Textarea 
-                placeholder="Write your comment..." 
-                className="min-h-[120px] rounded-3xl p-6 bg-card/50 backdrop-blur border-primary/10 focus:ring-primary/20 text-lg transition-all"
-              />
-              <Button className="absolute bottom-4 right-4 rounded-full px-6 font-bold shadow-lg shadow-primary/20">
-                <Send className="h-4 w-4 mr-2" /> Post
-              </Button>
-            </div>
-
-            {/* Mock Comments */}
-            <div className="space-y-8 pt-6">
-              {[
-                { name: "John Doe", time: "2 hours ago", comment: "Wow, this looks incredible! Can I substitute the butter with olive oil?", likes: 12 },
-                { name: "Sarah Smith", time: "5 hours ago", comment: "I made this last night and it was a huge hit with the kids. Definitely adding it to my weekly rotation!", likes: 45 },
-                { name: "Michael Chen", time: "1 day ago", comment: "The garlic butter instructions are spot on. Pro tip: add a pinch of chili flakes for extra kick.", likes: 8 }
-              ].map((c, i) => (
-                <motion.div 
-                  key={i}
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="flex gap-4 p-6 rounded-3xl bg-card border border-primary/5 shadow-sm"
-                >
-                  <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center font-bold text-primary flex-shrink-0">
-                    {c.name[0]}
-                  </div>
-                  <div className="space-y-2 flex-grow">
-                    <div className="flex justify-between items-center">
-                      <h4 className="font-bold">{c.name}</h4>
-                      <span className="text-xs text-muted-foreground">{c.time}</span>
-                    </div>
-                    <p className="text-muted-foreground leading-relaxed">
-                      {c.comment}
-                    </p>
-                    <div className="flex items-center gap-4 pt-2">
-                      <button className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground hover:text-red-500 transition-colors">
-                        <Heart className="h-3.5 w-3.5" /> {c.likes}
-                      </button>
-                      <button className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground hover:text-primary transition-colors">
-                        <MessageSquare className="h-3.5 w-3.5" /> Reply
-                      </button>
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-            
-            <Button variant="ghost" className="w-full rounded-2xl h-14 text-muted-foreground font-bold hover:bg-muted/50 border-2 border-dashed border-primary/10">
-              View all 24 comments
-            </Button>
-          </div>
-        </div>
+        <CommentSection recipeId={id} />
       </div>
     </div>
   );

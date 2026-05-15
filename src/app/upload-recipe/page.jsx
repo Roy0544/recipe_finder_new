@@ -125,7 +125,8 @@ export default function UploadRecipePage() {
         servings: formData.servings,
         user_id: user.id,
         image_url: imageUrl ,
-        user_Name:user?.user_metadata.name
+        user_Name:user?.user_metadata.name,
+        avatar_Url:user?.user_metadata.avatar_url
       };
 
       console.log("Submitting recipe to Supabase:", recipeData);
