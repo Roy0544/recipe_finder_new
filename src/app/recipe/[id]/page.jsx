@@ -14,7 +14,8 @@ import {
   ChefHat,
   Star,
   MessageSquare,
-  Send
+  Send,
+  Tag
 } from 'lucide-react';
 import { DotPattern } from '@/components/ui/dot-pattern';
 import { Button } from '@/components/ui/button';
@@ -117,9 +118,17 @@ export default function RecipeDetailPage() {
             className="space-y-6"
           >
             <div className="space-y-2">
-              <div className="flex items-center gap-2 text-primary font-bold text-sm uppercase tracking-widest">
-                <ChefHat className="h-4 w-4" />
-                Featured Recipe
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 text-primary font-bold text-sm uppercase tracking-widest">
+                  <ChefHat className="h-4 w-4" />
+                  Featured Recipe
+                </div>
+                {recipe.category && (
+                  <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-violet-600/10 text-violet-600 text-[10px] font-black uppercase tracking-widest border border-violet-600/20">
+                    <Tag className="h-3 w-3" />
+                    {recipe.category}
+                  </div>
+                )}
               </div>
               <h1 className="text-4xl md:text-5xl font-black tracking-tight leading-tight">
                 {recipe.title}

@@ -21,6 +21,9 @@
           <Link href="/home" className="text-sm font-medium hover:text-primary transition-colors">
             Home
           </Link>
+          <Link href="/discover" className="text-sm font-medium hover:text-primary transition-colors">
+            Discover
+          </Link>
           <Link href="/recipes" className="text-sm font-medium hover:text-primary transition-colors">
             My Recipes
           </Link>

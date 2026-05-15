@@ -19,6 +19,7 @@ import supabase from '@/config/client';
 const recipeSchema = z.object({
   title: z.string().min(3, "Title must be at least 3 characters"),
   description: z.string().min(10, "Description must be at least 10 characters"),
+  category: z.string().min(1, "Please select a category"),
   ingredients: z.array(z.object({
     value: z.string().min(1, "Ingredient cannot be empty")
   })).min(1, "Please add at least one ingredient"),
@@ -36,6 +37,11 @@ export default function UploadRecipePage() {
   const [imagePreview, setImagePreview] = useState(null);
   const imageInputRef = useRef(null);
 
+  const categories = [
+    "Breakfast", "Lunch", "Dinner", "Dessert", 
+    "Vegan", "Vegetarian", "Gluten-Free", "Quick & Easy"
+  ];
+
   const {
     register,
     control,
@@ -46,6 +52,7 @@ export default function UploadRecipePage() {
     defaultValues: {
       cookTime: 30,
       servings: 4,
+      category: "Breakfast",
       ingredients: [{ value: "" }],
       instructions: [{ value: "" }],
     }
@@ -111,13 +118,14 @@ export default function UploadRecipePage() {
       const recipeData = {
         title: formData.title,  
         description: formData.description,
+        category: formData.category,
         ingredients: formData.ingredients.map(i => i.value),
         instructions: formData.instructions.map(i => i.value),
         cook_time: formData.cookTime,
         servings: formData.servings,
         user_id: user.id,
-        image_url: imageUrl , // In a real app, you'd upload the image to storage and save the URL
-        
+        image_url: imageUrl ,
+        user_Name:user?.user_metadata.name
       };
 
       console.log("Submitting recipe to Supabase:", recipeData);
@@ -241,6 +249,20 @@ export default function UploadRecipePage() {
                       className={`min-h-[100px] ${errors.description ? "border-red-500" : ""}`}
                     />
                     {errors.description && <p className="text-xs text-red-500">{errors.description.message}</p>}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="category" className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Category</Label>
+                    <select
+                      id="category"
+                      {...register('category')}
+                      className={`flex h-12 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${errors.category ? "border-red-500" : "border-primary/20 focus:border-primary"}`}
+                    >
+                      {categories.map((cat) => (
+                        <option key={cat} value={cat}>{cat}</option>
+                      ))}
+                    </select>
+                    {errors.category && <p className="text-xs text-red-500">{errors.category.message}</p>}
                   </div>
                 </div>
 
