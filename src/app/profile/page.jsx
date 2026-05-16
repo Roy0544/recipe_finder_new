@@ -45,6 +45,10 @@ export default function ProfilePage() {
       setFetching(false);
     }
   };
+  const handleRecipeDelete = (deletedId) => {
+  setRecipes(prev => prev.filter(r => r.id !== deletedId));
+  setFavoriteRecipes(prev => prev.filter(r => r.id !== deletedId));
+};
 
   const fetchRecipes = async () => {
     const { data, error } = await supabase
@@ -236,6 +240,9 @@ export default function ProfilePage() {
                         onFavoriteToggle={handleFavoriteToggle}
                         showUser={false}
                         showActions={true}
+                        user={user}
+                        onDelete={handleRecipeDelete}
+
                       />
                     ))}
                   </div>
@@ -263,6 +270,8 @@ export default function ProfilePage() {
                         recipe={recipe} 
                         isFavorite={userFavorites.has(recipe.id)}
                         onFavoriteToggle={handleFavoriteToggle}
+                        user={user}
+                        onDelete={handleRecipeDelete}
                       />
                     ))}
                   </div>

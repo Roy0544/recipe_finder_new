@@ -1,9 +1,13 @@
 "use client"
 
-import React from 'react'
+import React, { useState } from 'react'
+import Image from 'next/image'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
+
+
+import supabase from "@/config/client"
 import { 
   Heart, 
   Clock, 
@@ -14,18 +18,51 @@ import {
   MessageSquare,
   Tag,
   Edit2,
-  Trash2
+  Trash2,
+  Loader2,
+  AlertTriangle
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+  AlertDialogMedia,
+} from "@/components/ui/alert-dialog"
 
-const RecipeCard = ({ recipe, isFavorite, onFavoriteToggle, showUser = true, showActions = false }) => {
+const RecipeCard = ({ recipe, isFavorite, onFavoriteToggle, showUser = true, showActions = false, user, onDelete }) => {
   const router = useRouter();
+  const [deleting, setDeleting] = useState(false);
 
-  const handleEdit=(e)=>{
-  e.stopPropagation();
+  const handleEdit = (e) => {
+    e.stopPropagation();
     router.push(`/upload-recipe?id=${recipe.id}`)
+  }
 
+  const confirmDelete = async () => {
+    setDeleting(true);
+    try {
+      const { error } = await supabase
+        .from('recipe')
+        .delete()
+        .eq('id', recipe.id)
+        .eq('user_id', user.id); // security: only owner can delete
+
+      if (error) throw error;
+      onDelete(recipe.id);
+    } catch (error) {
+      console.error("Error deleting recipe:", error);
+    } finally {
+      setDeleting(false);
+    }
   }
 
   return (
@@ -33,10 +70,12 @@ const RecipeCard = ({ recipe, isFavorite, onFavoriteToggle, showUser = true, sho
       {/* Image Container */}
       <div className="relative aspect-[4/3] overflow-hidden bg-muted">
         {recipe.image_url ? (
-          <img 
+          <Image 
             src={recipe.image_url} 
             alt={recipe.title}
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+            fill
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+            className="object-cover transition-transform duration-500 group-hover:scale-110"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-muted-foreground bg-violet-500/5">
@@ -66,17 +105,44 @@ const RecipeCard = ({ recipe, isFavorite, onFavoriteToggle, showUser = true, sho
                >
                  <Edit2 className="h-4 w-4" />
                </Button>
-               <Button 
-                 size="icon" 
-                 variant="destructive" 
-                 className="h-9 w-9 rounded-full shadow-md"
-                 onClick={(e) => {
-                   e.stopPropagation();
-                 }}
-               >
-                 <Trash2 className="h-4 w-4" />
-               </Button>
-             </>
+               <AlertDialog>
+                 <AlertDialogTrigger
+                   render={
+                     <Button 
+                       size="icon" 
+                       variant="destructive" 
+                       className="h-9 w-9 relative z-20 rounded-full shadow-md"
+                       onClick={(e) => e.stopPropagation()}
+                     />
+                   }
+                 >
+                   {deleting 
+                     ? <Loader2 className="h-4 w-4 animate-spin" /> 
+                     : <Trash2 className="h-4 w-4" />
+                   }
+                 </AlertDialogTrigger>
+                 <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                   <AlertDialogHeader>
+                     <AlertDialogMedia>
+                        <AlertTriangle className="h-5 w-5 text-destructive" />
+                     </AlertDialogMedia>
+                     <AlertDialogTitle>Delete Recipe</AlertDialogTitle>
+                     <AlertDialogDescription>
+                       Are you sure you want to delete &quot;{recipe.title}&quot;? This action cannot be undone.
+                     </AlertDialogDescription>
+                   </AlertDialogHeader>
+                   <AlertDialogFooter>
+                     <AlertDialogCancel>Cancel</AlertDialogCancel>
+                     <AlertDialogAction 
+                       className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                       onClick={confirmDelete}
+                     >
+                       Delete
+                     </AlertDialogAction>
+                   </AlertDialogFooter>
+                 </AlertDialogContent>
+               </AlertDialog>
+               </>
            ) : (
              <>
                <Button 

@@ -97,14 +97,23 @@ export default function LandingPage() {
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-            <Button size="lg" className="h-12 px-8 text-base font-semibold rounded-full group" aschild>
-              <Link href={user ? "/home" : "/auth"} className="flex items-center">
-                {user ? "Go to Dashboard" : "Get Started Free"}
-                <ArrowRightIcon className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
-              </Link>
+            <Button 
+              size="lg" 
+              className="h-12 px-8 text-base font-semibold rounded-full group" 
+              render={
+                <Link href={user ? "/home" : "/auth"} className="flex items-center" />
+              }
+            >
+              {user ? "Go to Dashboard" : "Get Started Free"}
+              <ArrowRightIcon className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
             </Button>
-            <Button variant="outline" size="lg" className="h-12 px-8 text-base font-semibold rounded-full" aschild>
-              <Link href="/recipes">Browse Public Recipes</Link>
+            <Button 
+              variant="outline" 
+              size="lg" 
+              className="h-12 px-8 text-base font-semibold rounded-full" 
+              render={<Link href="/recipes" />}
+            >
+              Browse Public Recipes
             </Button>
           </div>
         </motion.div>
@@ -118,7 +127,7 @@ export default function LandingPage() {
         >
           <div className="flex items-center gap-3 px-4 py-3 border-b">
             <MagnifyingGlassIcon className="h-5 w-5 text-muted-foreground" />
-            <div className="text-sm text-muted-foreground italic">Try: "Chicken with garlic and lemon..."</div>
+            <div className="text-sm text-muted-foreground italic">Try: &quot;Chicken with garlic and lemon...&quot;</div>
           </div>
           <div className="p-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
              {['Pasta', 'Healthy', 'Quick', 'Dessert'].map((tag) => (

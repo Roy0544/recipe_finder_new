@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useEffect, useState } from 'react'
+import Image from 'next/image'
 import { DotPattern } from '@/components/ui/dot-pattern'
 import { KineticText } from '@/components/ui/kinetic-text'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
@@ -209,10 +210,12 @@ const FavoritesPage = () => {
                       {/* Image Container */}
                       <div className="relative aspect-[4/3] overflow-hidden bg-muted">
                         {recipe.image_url ? (
-                          <img 
+                          <Image 
                             src={recipe.image_url} 
                             alt={recipe.title}
-                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                            fill
+                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                            className="object-cover transition-transform duration-500 group-hover:scale-110"
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center text-muted-foreground bg-violet-500/5">

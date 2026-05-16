@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { 
   Loader2, 
   Clock, 
@@ -93,10 +94,13 @@ export default function RecipeDetailPage() {
             className="relative aspect-square md:aspect-video lg:aspect-square rounded-3xl overflow-hidden shadow-2xl border border-primary/10"
           >
             {recipe.image_url ? (
-              <img 
+              <Image 
                 src={recipe.image_url} 
                 alt={recipe.title} 
-                className="w-full h-full object-cover"
+                fill
+                priority
+                sizes="(max-width: 1024px) 100vw, 50vw"
+                className="object-cover"
               />
             ) : (
               <div className="w-full h-full bg-muted flex items-center justify-center">

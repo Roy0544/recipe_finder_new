@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Image from 'next/image';
 import { useAuth } from '@/hooks/useAuth';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -30,7 +31,7 @@ const recipeSchema = z.object({
   servings: z.number().int().min(1, "Servings count is required"),
 });
 
-export default function UploadRecipePage() {
+function UploadRecipeForm(){
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
@@ -254,7 +255,13 @@ export default function UploadRecipePage() {
                     />
                     {imagePreview ? (
                       <div className="relative w-full aspect-video rounded-xl overflow-hidden border shadow-inner">
-                        <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
+                        <Image 
+                          src={imagePreview} 
+                          alt="Preview" 
+                          fill
+                          unoptimized
+                          className="object-cover" 
+                        />
                         <Button 
                           type="button"
                           variant="destructive" 
@@ -455,5 +462,18 @@ export default function UploadRecipePage() {
         </Card>
       </div>
     </div>
+  );
+}
+export default function UploadRecipePage() {
+  return (
+    <Suspense 
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      }
+    >
+      <UploadRecipeForm />
+    </Suspense>
   );
 }

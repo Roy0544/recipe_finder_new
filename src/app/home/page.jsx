@@ -48,7 +48,8 @@ const HomePage = () => {
       const { data, error } = await supabase
         .from('recipe')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(10);
 
       if (error) throw error;
       setRecipes(data || []);
