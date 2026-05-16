@@ -12,13 +12,21 @@ import {
   ChevronRight, 
   Bookmark, 
   MessageSquare,
-  Tag
+  Tag,
+  Edit2,
+  Trash2
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 
-const RecipeCard = ({ recipe, isFavorite, onFavoriteToggle, showUser = true }) => {
+const RecipeCard = ({ recipe, isFavorite, onFavoriteToggle, showUser = true, showActions = false }) => {
   const router = useRouter();
+
+  const handleEdit=(e)=>{
+  e.stopPropagation();
+    router.push(`/upload-recipe?id=${recipe.id}`)
+
+  }
 
   return (
     <Card className="group h-full overflow-hidden border-primary/5 hover:border-primary/20 transition-all duration-300 shadow-sm hover:shadow-xl bg-card/50 backdrop-blur-sm flex flex-col rounded-3xl">
@@ -48,25 +56,50 @@ const RecipeCard = ({ recipe, isFavorite, onFavoriteToggle, showUser = true }) =
         
         {/* Overlay Buttons */}
         <div className="absolute top-3 right-3 flex flex-col gap-2">
-           <Button 
-             size="icon" 
-             variant="secondary" 
-             className={`h-9 w-9 rounded-full relative z-20 bg-white/90 backdrop-blur shadow-sm hover:bg-white transition-colors ${isFavorite ? 'text-red-500' : 'text-muted-foreground hover:text-red-500'}`}
-             onClick={(e) => {
-               e.stopPropagation();
-               onFavoriteToggle(recipe.id);
-             }}
-           >
-             <Heart className={`h-4 w-4 ${isFavorite ? 'fill-current' : ''}`} />
-           </Button>
-           <Button 
-             size="icon" 
-             variant="secondary" 
-             className="h-9 w-9 rounded-full bg-white/90 backdrop-blur shadow-sm hover:bg-white text-muted-foreground hover:text-primary transition-colors"
-             onClick={(e) => e.stopPropagation()}
-           >
-             <Bookmark className="h-4 w-4" />
-           </Button>
+           {showActions ? (
+             <>
+               <Button 
+                 size="icon" 
+                 variant="secondary" 
+                 className="h-9 w-9 rounded-full relative z-20  bg-white/90 backdrop-blur shadow-sm hover:bg-white text-primary transition-colors"
+                 onClick={(e) => { handleEdit(e,recipe.id)}}
+               >
+                 <Edit2 className="h-4 w-4" />
+               </Button>
+               <Button 
+                 size="icon" 
+                 variant="destructive" 
+                 className="h-9 w-9 rounded-full shadow-md"
+                 onClick={(e) => {
+                   e.stopPropagation();
+                 }}
+               >
+                 <Trash2 className="h-4 w-4" />
+               </Button>
+             </>
+           ) : (
+             <>
+               <Button 
+                 size="icon" 
+                 variant="secondary" 
+                 className={`h-9 w-9 rounded-full relative z-20 bg-white/90 backdrop-blur shadow-sm hover:bg-white transition-colors ${isFavorite ? 'text-red-500' : 'text-muted-foreground hover:text-red-500'}`}
+                 onClick={(e) => {
+                   e.stopPropagation();
+                   onFavoriteToggle(recipe.id);
+                 }}
+               >
+                 <Heart className={`h-4 w-4 ${isFavorite ? 'fill-current' : ''}`} />
+               </Button>
+               <Button 
+                 size="icon" 
+                 variant="secondary" 
+                 className="h-9 w-9 rounded-full bg-white/90 backdrop-blur shadow-sm hover:bg-white text-muted-foreground hover:text-primary transition-colors"
+                 onClick={(e) => e.stopPropagation()}
+               >
+                 <Bookmark className="h-4 w-4" />
+               </Button>
+             </>
+           )}
         </div>
 
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">

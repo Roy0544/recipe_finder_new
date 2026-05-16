@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -36,6 +36,10 @@ export default function UploadRecipePage() {
   const [submitting, setSubmitting] = useState(false);
   const [imagePreview, setImagePreview] = useState(null);
   const imageInputRef = useRef(null);
+  const searchParams = useSearchParams();
+  const recipeId = searchParams.get('id');
+  const isEditMode = !!recipeId;  
+  const [existingImageUrl, setExistingImageUrl] = useState(null);
 
   const categories = [
     "Breakfast", "Lunch", "Dinner", "Dessert", 
@@ -46,6 +50,7 @@ export default function UploadRecipePage() {
     register,
     control,
     handleSubmit,
+    reset,
     formState: { errors },
   } = useForm({
     resolver: zodResolver(recipeSchema),
@@ -74,6 +79,39 @@ export default function UploadRecipePage() {
     }
   }, [user, authLoading, router]);
 
+  useEffect(() => {
+    if (recipeId) fetchRecipe();
+  }, [recipeId]);
+
+  const fetchRecipe = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('recipe')
+        .select('*')
+        .eq('id', recipeId)
+        .single();
+
+      if (error) throw error;
+
+      reset({
+        title: data.title,
+        description: data.description,
+        category: data.category,
+        cookTime: data.cook_time,
+        servings: data.servings,
+        ingredients: data.ingredients.map(i => ({ value: i })),
+        instructions: data.instructions.map(i => ({ value: i })),
+      });
+
+      if (data.image_url) {
+        setImagePreview(data.image_url);
+        setExistingImageUrl(data.image_url);
+      }
+    } catch (error) {
+      console.error("Error fetching recipe:", error);
+    }
+  };
+
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -87,33 +125,36 @@ export default function UploadRecipePage() {
 
   const removeImage = () => {
     setImagePreview(null);
-    if (imageInputRef.current) imageInputRef.current.value = ''; // clear input
+    if (imageInputRef.current) imageInputRef.current.value = ''; 
   };
 
   const onSubmit = async (formData) => {
     setSubmitting(true);
     try {
-      let imageUrl=null
-      const file=imageInputRef.current?.files?.[0]
-
+      let imageUrl = existingImageUrl;
+      const file = imageInputRef.current?.files?.[0];
 
       if (file) {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${user.id}/${Date.now()}.${fileExt}`;
 
-      const { error: uploadError } = await supabase.storage
-        .from('food_images')
-        .upload(fileName, file, { cacheControl: '3600', upsert: false });
+        const { error: uploadError } = await supabase.storage
+          .from('food_images')
+          .upload(fileName, file, { cacheControl: '3600', upsert: true });
 
-      if (uploadError) throw uploadError;
+        if (uploadError) {
+          console.error("Storage upload error detail:", uploadError);
+          throw new Error(`Storage error: ${uploadError.message || 'Check if bucket exists'}`);
+        }
 
-      const { data } = supabase.storage
-        .from('food_images')
-        .getPublicUrl(fileName);
+        const { data } = supabase.storage
+          .from('food_images')
+          .getPublicUrl(fileName);
 
-      imageUrl = data.publicUrl;
-    }
-    console.log("public url for image is",imageUrl);
+        imageUrl = data.publicUrl;
+      }
+      
+      if (!imagePreview && !file) imageUrl = null;
     
       const recipeData = {
         title: formData.title,  
@@ -124,25 +165,38 @@ export default function UploadRecipePage() {
         cook_time: formData.cookTime,
         servings: formData.servings,
         user_id: user.id,
-        image_url: imageUrl ,
-        user_Name:user?.user_metadata.name,
-        avatar_Url:user?.user_metadata.avatar_url
+        image_url: imageUrl,
+        user_Name: user?.user_metadata?.name || user?.user_metadata?.full_name || "Unknown Chef",
+        avatar_Url: user?.user_metadata?.avatar_url
       };
 
-      console.log("Submitting recipe to Supabase:", recipeData);
-      
-      const { data: result, error } = await supabase
-        .from('recipe')
-        .insert([recipeData])
-        .select()
-        .single();
+      if (isEditMode) {
+        console.log("Updating recipe:", recipeId, "User:", user.id);
+        const { data: updateData, error } = await supabase
+          .from('recipe')
+          .update(recipeData)
+          .eq('id', recipeId)
+          .eq('user_id', user.id)
+          .select();
 
-      if (error) throw error;
+        if (error) throw error;
+        console.log("Update database response:", updateData);
+        if (!updateData || updateData.length === 0) {
+           console.error("NO ROWS UPDATED. Check permissions or ID.");
+           alert("Update failed: You may not have permission to edit this recipe.");
+        }
+      } else {
+        const { error } = await supabase
+          .from('recipe')
+          .insert([recipeData]);
+
+        if (error) throw error;
+      }
       
-      console.log("Successfully uploaded recipe:", result);
       router.push('/profile');
     } catch (error) {
-      console.error("Error uploading recipe:", error);
+      console.error("Error submitting recipe:", error);
+      alert(error.message || "An error occurred while saving the recipe.");
     } finally {
       setSubmitting(false);
     }
@@ -176,7 +230,7 @@ export default function UploadRecipePage() {
             <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4 border border-primary/20">
               <Utensils className="h-8 w-8 text-primary" />
             </div>
-            <CardTitle className="text-3xl font-bold tracking-tight">Upload New Recipe</CardTitle>
+            <CardTitle className="text-3xl font-bold tracking-tight">{isEditMode ? "Edit Recipe" : "Upload New Recipe"}</CardTitle>
             <CardDescription>
               Share your culinary masterpiece with the Recipe Finder community.
             </CardDescription>
@@ -185,8 +239,7 @@ export default function UploadRecipePage() {
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
               <div className="space-y-6">
                 
-                {/* Image Upload Section */}
-                <div className="space-y-2">
+                  <div className="space-y-2">
                   <Label className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
                     <ImageIcon className="h-4 w-4" /> Recipe Image
                   </Label>
@@ -394,7 +447,7 @@ export default function UploadRecipePage() {
                   ) : (
                     <Plus className="h-5 w-5 mr-2" />
                   )}
-                  Publish Recipe
+                  {isEditMode ? "Update" : "Publish"}
                 </Button>
               </div>
             </form>
